@@ -1,0 +1,6 @@
+Package: makecommand
+Version: 1.0-1
+Depends: lolcat
+Architecture: all
+Maintainer: Aliraq1 (aliraq1.xyz)
+Description: Advanced CLI tool to save, manage, and run complex commands with sudo support made with AI by Aliraq1.
