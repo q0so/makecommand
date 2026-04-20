@@ -1,0 +1,44 @@
+#!/bin/bash
+
+if [ -n "$SUDO_USER" ]; then
+    USER_HOME=$(eval echo "~$SUDO_USER")
+else
+    USER_HOME="$HOME"
+fi
+
+CONFIG_DIR="$USER_HOME/.config/makecommand"
+NAME="$1"
+
+if [ -z "$NAME" ]; then
+    RUN_CMD_NAME=$(basename "$0")
+    echo "Usage: $RUN_CMD_NAME [name]"
+    exit 1
+fi
+
+FILE="$CONFIG_DIR/$NAME"
+
+if [ ! -f "$FILE" ]; then
+    echo "Error: Command '$NAME' not found."
+    exit 1
+fi
+
+FIRST_LINE=$(head -n 1 "$FILE")
+
+if [[ "$FIRST_LINE" == "#SUDO" ]]; then
+    # Check if user is root (sudo)
+    if [ "$EUID" -ne 0 ]; then
+        RUN_CMD_NAME=$(basename "$0")
+        echo -e "\e[31mROOT REQUIRED\e[0m"
+        echo "Please run: sudo $RUN_CMD_NAME $NAME"
+        exit 1
+    fi
+    # Read the file excluding the first line (#SUDO)
+    CMD=$(tail -n +2 "$FILE")
+else
+    # Read the whole file normally
+    CMD=$(cat "$FILE")
+fi
+
+# Execute the command
+eval "$CMD"
+
