@@ -1,0 +1,148 @@
+#!/bin/bash
+
+CONFIG_DIR="$HOME/.config/makecommand"
+RUN_NAME_FILE="$CONFIG_DIR/.current_run_name"
+mkdir -p "$CONFIG_DIR"
+
+if [ -n "$SUDO_USER" ]; then
+    USER_HOME=$(eval echo "~$SUDO_USER")
+else
+    USER_HOME="$HOME"
+fi
+
+CONFIG_DIR="$USER_HOME/.config/makecommand"
+RUN_NAME_FILE="$CONFIG_DIR/.current_run_name"
+mkdir -p "$CONFIG_DIR"
+
+# Show Help
+if [[ "$1" == "-help" || "$1" == "--help" ]]; then
+    echo "Usage: makecommand [\"command\"] [\"name\"] [-sudo]"
+    echo ""
+    echo "Options:" | lolcat --seed=90 -i -t -f
+    echo "  -help, --help         Show this help message"
+    echo "  list                  List all saved commands"
+    echo "  -remove [name]        Remove a specific command"
+    echo "  -remove-all           Remove ALL saved commands"
+    echo "  -edit [name]          Edit a saved command in nano"
+    echo "  -run-name [new_name]  Change the execution command (e.g., from run to myrun)"
+    echo "  -update               Update this package"
+    echo "  -version              Show version of this package"
+    echo ""
+    echo "examples :" | lolcat --seed=10 -i -t -f
+    echo "makecommand \"cd /home/$USER\" \"home\""
+    echo "makecommand \"reboot now\" \"reboot\" -sudo"
+    echo "run home" 
+    exit 0
+fi
+# Show Version
+if [[ "$1" == "-version" || "$1" == "--version" ]]; then
+    echo "makecommand version 1.0-1BETA BY ALIRAQ1"
+    exit 0
+fi
+
+# Update the tool
+if [[ "$1" == "-update" ]]; then
+    echo "Checking for updates..."
+    sudo apt update
+    sudo apt install --only-upgrade makecommand
+    exit 0
+fi
+
+# List commands
+if [[ "$1" == "list" ]]; then
+    if [ "$(ls -A "$CONFIG_DIR" 2>/dev/null | grep -v '^\.')" ]; then
+        echo "Saved commands:"
+        for file in "$CONFIG_DIR"/*; do
+            [ -f "$file" ] || continue
+            name=$(basename "$file")
+            first_line=$(head -n 1 "$file")
+            if [[ "$first_line" == "#SUDO" ]]; then
+                echo "  - $name [Requires Sudo]"
+            else
+                echo "  - $name"
+            fi
+        done
+    else
+        echo "No commands saved yet."
+    fi
+    exit 0
+fi
+
+# Remove all commands
+if [[ "$1" == "-remove-all" ]]; then
+    read -p "Are you sure you want to delete ALL saved commands? (y/n): " confirm
+    if [[ "$confirm" == [yY] || "$confirm" == [yY][eE][sS] ]]; then
+        rm -f "$CONFIG_DIR"/*
+        echo "All commands have been removed."
+    else
+        echo "Operation cancelled."
+    fi
+    exit 0
+fi
+
+# Remove specific command
+if [[ "$1" == "-remove" ]]; then
+    if [ -z "$2" ]; then echo "Provide a name. Example: makecommand -remove mycmd"; exit 1; fi
+    if [ -f "$CONFIG_DIR/$2" ]; then
+        rm -f "$CONFIG_DIR/$2"
+        echo "Removed: $2"
+    else
+        echo "Command '$2' not found."
+    fi
+    exit 0
+fi
+
+# Edit command
+if [[ "$1" == "-edit" ]]; then
+    if [ -z "$2" ]; then echo "Provide a name. Example: makecommand -edit mycmd"; exit 1; fi
+    if [ -f "$CONFIG_DIR/$2" ]; then
+        nano "$CONFIG_DIR/$2"
+    else
+        echo "Command '$2' not found."
+    fi
+    exit 0
+fi
+
+# Change the base run command name
+if [[ "$1" == "-run-name" ]]; then
+    NEW_NAME="$2"
+    if [ -z "$NEW_NAME" ]; then echo "Provide a new name. Example: makecommand -run-name myrun"; exit 1; fi
+    
+    CURRENT_RUN_CMD=$(cat "$RUN_NAME_FILE" 2>/dev/null || echo "runc")
+    
+    if [ ! -f "/usr/bin/$CURRENT_RUN_CMD" ]; then
+        echo "Error: /usr/bin/$CURRENT_RUN_CMD not found."
+        exit 1
+    fi
+    
+    echo "Renaming '/usr/bin/$CURRENT_RUN_CMD' to '/usr/bin/$NEW_NAME'..."
+    echo "(You may be prompted for your password to allow this system change)"
+    sudo mv "/usr/bin/$CURRENT_RUN_CMD" "/usr/bin/$NEW_NAME"
+    
+    if [ $? -eq 0 ]; then
+        echo "$NEW_NAME" > "$RUN_NAME_FILE"
+        echo "Success! You can now use '$NEW_NAME' to run your commands."
+    else
+        echo "Failed to change the command name."
+    fi
+    exit 0
+fi
+
+# Create a new command
+if [ $# -lt 2 ]; then
+    echo "Invalid usage. Type 'makecommand --help' for more info."
+    exit 1
+fi
+
+CMD="$1"
+NAME="$2"
+SUDO_FLAG="$3"
+
+if [[ "$SUDO_FLAG" == "-sudo" ]]; then
+    echo "#SUDO" > "$CONFIG_DIR/$NAME"
+    echo "$CMD" >> "$CONFIG_DIR/$NAME"
+    echo "Success! Saved command: '$NAME' (Requires ROOT)"
+else
+    echo "$CMD" > "$CONFIG_DIR/$NAME"
+    echo "Success! Saved command: '$NAME'"
+fi
