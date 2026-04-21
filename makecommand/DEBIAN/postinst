@@ -1,0 +1,29 @@
+#!/bin/bash
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+VERSION="1.2-1BETA"
+
+case "$1" in
+    configure)
+        if [ -z "$2" ]; then
+            echo -e "\e[32m===================================================\e[0m"
+            echo -e "\e[1;32m  makecommand successfully installed!              \e[0m"
+            echo -e "\e[32m  Run: makecommand --help to show the help menu    \e[0m"
+            echo -e "\e[32m===================================================\e[0m"
+        else
+            echo -e "\e[36m===================================================\e[0m"
+            echo -e "\e[1;36m  Package Updated : version $VERSION               \e[0m"
+            echo -e "\e[36m  Run: makecommand -changelog to see what's new!   \e[0m"
+            echo -e "\e[36m===================================================\e[0m"
+        fi
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
