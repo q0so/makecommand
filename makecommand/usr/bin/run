@@ -11,7 +11,7 @@ NAME="$1"
 
 if [ -z "$NAME" ]; then
     RUN_CMD_NAME=$(basename "$0")
-    echo "Usage: $RUN_CMD_NAME [name]"
+    echo "Usage: $RUN_CMD_NAME [name] [args...]"
     exit 1
 fi
 
@@ -22,23 +22,89 @@ if [ ! -f "$FILE" ]; then
     exit 1
 fi
 
-FIRST_LINE=$(head -n 1 "$FILE")
+# Check requirements
+REQUIRES_SUDO=0
+ALLOWS_ARGS=0
+TYPE_VAL=""
 
-if [[ "$FIRST_LINE" == "#SUDO" ]]; then
-    # Check if user is root (sudo)
+if grep -q "^#SUDO$" "$FILE"; then REQUIRES_SUDO=1; fi
+if grep -q "^#ARGS$" "$FILE"; then ALLOWS_ARGS=1; fi
+if grep -q "^#TYPE:" "$FILE"; then 
+    TYPE_VAL=$(grep "^#TYPE:" "$FILE" | cut -d':' -f2 | tr '[:upper:]' '[:lower:]')
+fi
+
+if [ $REQUIRES_SUDO -eq 1 ]; then
     if [ "$EUID" -ne 0 ]; then
         RUN_CMD_NAME=$(basename "$0")
         echo -e "\e[31mROOT REQUIRED\e[0m"
         echo "Please run: sudo $RUN_CMD_NAME $NAME"
         exit 1
     fi
-    # Read the file excluding the first line (#SUDO)
-    CMD=$(tail -n +2 "$FILE")
-else
-    # Read the whole file normally
-    CMD=$(cat "$FILE")
 fi
 
-# Execute the command
-eval "$CMD"
+# Extract the actual code body, ignoring all metadata headers
+CMD=$(grep -v -E "^#(SUDO|ARGS|TAG:.*|TYPE:.*)$" "$FILE")
 
+shift # Remove the [name] from arguments list to process the rest
+
+# Process Arguments Replacement & Separate Positional Arguments
+POSITIONAL_CMDS=""
+if [ $ALLOWS_ARGS -eq 1 ]; then
+    for arg in "$@"; do
+        if [[ "$arg" == -*=* ]]; then
+            # Replace {{KEY}} with VALUE (e.g. from -url=google.com)
+            KEY="${arg%%=*}"
+            KEY=$(echo "$KEY" | sed 's/^-*//') 
+            VALUE="${arg#*=}"                  
+            CMD="${CMD//\{\{$KEY\}\}/$VALUE}"
+        else
+            # Keep normal positional arguments
+            POSITIONAL_CMDS="$POSITIONAL_CMDS \"$arg\""
+        fi
+    done
+else
+    # Even if -args isn't used, pass regular parameters (like `run script file.txt`)
+    for arg in "$@"; do
+        POSITIONAL_CMDS="$POSITIONAL_CMDS \"$arg\""
+    done
+fi
+
+# Execute Command based on #TYPE
+if [ -n "$TYPE_VAL" ]; then
+    case "$TYPE_VAL" in
+        py|python)
+            TMP_FILE=$(mktemp --suffix=.py)
+            echo "$CMD" > "$TMP_FILE"
+            eval "python3 \"$TMP_FILE\" $POSITIONAL_CMDS"
+            rm -f "$TMP_FILE"
+            ;;
+        node|js|javascript)
+            TMP_FILE=$(mktemp --suffix=.js)
+            echo "$CMD" > "$TMP_FILE"
+            eval "node \"$TMP_FILE\" $POSITIONAL_CMDS"
+            rm -f "$TMP_FILE"
+            ;;
+        java)
+            TMP_FILE=$(mktemp --suffix=.java)
+            echo "$CMD" > "$TMP_FILE"
+            eval "java \"$TMP_FILE\" $POSITIONAL_CMDS"
+            rm -f "$TMP_FILE"
+            ;;
+        c|cpp)
+            TMP_FILE=$(mktemp --suffix=.c)
+            echo "$CMD" > "$TMP_FILE"
+            gcc "$TMP_FILE" -o "${TMP_FILE}.out" && eval "\"${TMP_FILE}.out\" $POSITIONAL_CMDS"
+            rm -f "$TMP_FILE" "${TMP_FILE}.out"
+            ;;
+        sh|bash)
+            eval "$CMD $POSITIONAL_CMDS"
+            ;;
+        *)
+            # Fallback for unknown types
+            eval "$CMD $POSITIONAL_CMDS"
+            ;;
+    esac
+else
+    # Default Execution (Standard Bash/CLI logic)
+    eval "$CMD $POSITIONAL_CMDS"
+fi

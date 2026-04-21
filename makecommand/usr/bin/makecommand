@@ -1,9 +1,5 @@
 #!/bin/bash
 
-CONFIG_DIR="$HOME/.config/makecommand"
-RUN_NAME_FILE="$CONFIG_DIR/.current_run_name"
-mkdir -p "$CONFIG_DIR"
-
 if [ -n "$SUDO_USER" ]; then
     USER_HOME=$(eval echo "~$SUDO_USER")
 else
@@ -16,27 +12,100 @@ mkdir -p "$CONFIG_DIR"
 
 # Show Help
 if [[ "$1" == "-help" || "$1" == "--help" ]]; then
-    echo "Usage: makecommand [\"command\"] [\"name\"] [-sudo]"
+    echo "Usage: makecommand [\"command\" / -file / -folder] [path/code] [\"name\"] [options]"
     echo ""
     echo "Options:" | lolcat --seed=90 -i -t -f
     echo "  -help, --help         Show this help message"
-    echo "  list                  List all saved commands"
+    echo "  -examples             Show a MASSIVE list of usage examples"
+    echo "  list [tag]            List all saved commands (optionally filter by tag)"
     echo "  -remove [name]        Remove a specific command"
     echo "  -remove-all           Remove ALL saved commands"
     echo "  -edit [name]          Edit a saved command in nano"
+    echo "  -view [name]          View the source code of a saved command"
     echo "  -run-name [new_name]  Change the execution command (e.g., from run to myrun)"
+    echo "  -changelog            View the latest version changes"
     echo "  -update               Update this package"
     echo "  -version              Show version of this package"
     echo ""
-    echo "examples :" | lolcat --seed=10 -i -t -f
-    echo "makecommand \"cd /home/$USER\" \"home\""
-    echo "makecommand \"reboot now\" \"reboot\" -sudo"
-    echo "run home" 
+    echo "Command Flags (Add these at the end):" | lolcat --seed=30 -i -t -f
+    echo "  -sudo                 Require ROOT to run this command"
+    echo "  -args                 Allow passing dynamic arguments e.g., -url=\"...\""
+    echo "  -tag [name]           Add a tag to categorize the command"
+    echo "  -type [lang]          Specify code type natively (py, node, java, c, bash)"
+    echo "  -run [cmd]            Custom run command (Used with -folder)"
     exit 0
 fi
+
+# Show Extensive Examples
+if [[ "$1" == "-examples" ]]; then
+    echo "==================================================================" | lolcat --seed=50 -f
+    echo "              MAKECOMMAND - THE ULTIMATE CHEAT SHEET              " | lolcat --seed=50 -f
+    echo "==================================================================" | lolcat --seed=50 -f
+    echo ""
+    echo -e "\e[32m[1] BASIC ALIASES & SYSTEM COMMANDS\e[0m"
+    echo "  makecommand \"ls -la --color=auto\" \"list\""
+    echo "  makecommand \"htop\" \"monitor\""
+    echo "  makecommand \"clear && neofetch\" \"sysinfo\""
+    echo "  makecommand \"history -c\" \"clean-history\""
+    echo ""
+    echo -e "\e[32m[2] RUNNING NATIVE CODE DIRECTLY (-type)\e[0m"
+    echo "  makecommand \"print('Hello Python!')\" \"hellopy\" -type \"py\""
+    echo "  makecommand \"console.log('Hello Node!')\" \"hellonode\" -type \"js\""
+    echo "  makecommand \"import os; print(os.cpu_count())\" \"cpu-count\" -type \"python\""
+    echo ""
+    echo -e "\e[32m[3] IMPORTING & RUNNING LOCAL SCRIPTS (-file & -type)\e[0m"
+    echo "  makecommand -file \"./script.py\" \"my-py-script\" -type \"py\""
+    echo "  makecommand -file \"./app.js\" \"run-app\" -type \"node\""
+    echo "  makecommand -file \"./main.c\" \"run-c\" -type \"c\""
+    echo "  makecommand -file \"./Hello.java\" \"run-java\" -type \"java\""
+    echo ""
+    echo -e "\e[32m[4] FOLDER SHORTCUTS / WORKING DIRECTORY (-folder & -run)\e[0m"
+    echo "  # Run a project inside its specific folder without copying it!"
+    echo "  makecommand -folder \"/opt/mytool/start.sh\" \"tool\" -run \"bash start.sh\""
+    echo "  makecommand -folder \"./bot/server.js\" \"discord-bot\" -run \"node server.js\""
+    echo "  makecommand -folder \"./django/manage.py\" \"server\" -run \"python3 manage.py runserver\""
+    echo "  makecommand -folder \"./docker-compose.yml\" \"up\" -run \"docker-compose up -d\" -sudo"
+    echo ""
+    echo -e "\e[32m[5] SUPERUSER (ROOT) COMMANDS (-sudo)\e[0m"
+    echo "  makecommand \"apt update && apt upgrade -y\" \"sys-update\" -sudo"
+    echo "  makecommand \"systemctl restart nginx\" \"nginx-restart\" -sudo"
+    echo "  makecommand \"ufw status numbered\" \"firewall\" -sudo"
+    echo ""
+    echo -e "\e[32m[6] DYNAMIC ARGUMENTS (-args)\e[0m"
+    echo "  # Replace {{variables}} inside your commands on the fly!"
+    echo "  makecommand \"ping -c 4 {{ip}}\" \"myping\" -args"
+    echo "  run myping -ip=\"8.8.8.8\""
+    echo ""
+    echo "  makecommand \"yt-dlp -f bestaudio {{url}}\" \"get-audio\" -args"
+    echo "  run get-audio -url=\"https://youtube.com/...\""
+    echo ""
+    echo "  makecommand \"mkdir -p {{dir}} && cd {{dir}}\" \"take\" -args"
+    echo "  run take -dir=\"/tmp/new_project\""
+    echo ""
+    echo -e "\e[32m[7] COMBINING MULTIPLE FLAGS (THE MASTER LEVEL)\e[0m"
+    echo "  makecommand \"nmap -sS -O {{target}}\" \"scan\" -sudo -args -tag \"hack\""
+    echo "  makecommand -file \"./brute.py\" \"brute\" -type \"py\" -args -tag \"hack\""
+    echo "  makecommand -folder \"./api/app.js\" \"api\" -run \"node app.js --port={{p}}\" -args"
+    echo ""
+    echo -e "\e[32m[8] MANAGEMENT & ORGANIZATION (-tag)\e[0m"
+    echo "  makecommand list                 # View all commands"
+    echo "  makecommand list hack            # View commands tagged 'hack'"
+    echo "  makecommand -view api            # See the actual generated code"
+    echo "  makecommand -edit scan           # Open command in Nano to fix it"
+    echo "  makecommand -remove myping       # Delete one command"
+    echo "  makecommand -remove-all          # Wipe everything clean"
+    echo ""
+    echo -e "\e[32m[9] TOOL CONFIGURATION\e[0m"
+    echo "  makecommand -run-name exe        # Change the command prefix to 'exe'"
+    echo "  exe api -p=\"8080\"                # Use 'exe' instead of 'run' now!"
+    echo ""
+    echo "==================================================================" | lolcat --seed=50 -f
+    exit 0
+fi
+
 # Show Version
 if [[ "$1" == "-version" || "$1" == "--version" ]]; then
-    echo "makecommand version 1.0-1BETA BY ALIRAQ1"
+    echo "makecommand version 1.2-1BETA BY ALIRAQ1"
     exit 0
 fi
 
@@ -48,19 +117,65 @@ if [[ "$1" == "-update" ]]; then
     exit 0
 fi
 
+if [[ "$1" == "-changelog" ]]; then
+    echo "1.2-1BETA :"
+    echo "Add -type for running specific languages natively (py, node, c, java)"
+    echo "Add -folder to execute scripts in their original directory"
+    echo "Add -run to define custom execution commands for folders"
+    echo "Massively expanded -examples list"
+    echo "1.1-1BETA (SKIPPED):"
+    echo "Add -tag, -file, -examples, list, -view, -changelog, {{ }} support" 
+    exit 0
+fi
+
+# View command source code
+if [[ "$1" == "-view" ]]; then
+    NAME="$2"
+    if [ -z "$NAME" ]; then echo "Provide a name. Example: makecommand -view mycmd"; exit 1; fi
+    if [ -f "$CONFIG_DIR/$NAME" ]; then
+        echo -e "\e[34m--- Source of '$NAME' ---\e[0m"
+        grep -v -E "^#(SUDO|ARGS|TAG:.*|TYPE:.*)$" "$CONFIG_DIR/$NAME"
+        echo -e "\e[34m-------------------------\e[0m"
+    else
+        echo "Command '$NAME' not found."
+    fi
+    exit 0
+fi
+
 # List commands
 if [[ "$1" == "list" ]]; then
+    FILTER_TAG="$2"
     if [ "$(ls -A "$CONFIG_DIR" 2>/dev/null | grep -v '^\.')" ]; then
-        echo "Saved commands:"
+        if [ -n "$FILTER_TAG" ]; then
+            echo "Saved commands (Tag: $FILTER_TAG):"
+        else
+            echo "Saved commands:"
+        fi
+        
         for file in "$CONFIG_DIR"/*; do
             [ -f "$file" ] || continue
             name=$(basename "$file")
-            first_line=$(head -n 1 "$file")
-            if [[ "$first_line" == "#SUDO" ]]; then
-                echo "  - $name [Requires Sudo]"
-            else
-                echo "  - $name"
+            
+            label=""
+            file_tag=""
+            
+            if grep -q "^#SUDO$" "$file"; then label="$label [Sudo]"; fi
+            if grep -q "^#ARGS$" "$file"; then label="$label [Args]"; fi
+            if grep -q "^#TYPE:" "$file"; then 
+                t_val=$(grep "^#TYPE:" "$file" | cut -d':' -f2)
+                label="$label [Type: $t_val]"
             fi
+            if grep -q "^#TAG:" "$file"; then 
+                file_tag=$(grep "^#TAG:" "$file" | cut -d':' -f2)
+                label="$label [Tag: $file_tag]"
+            fi
+            
+            # If user provided a tag filter, skip files that don't match
+            if [ -n "$FILTER_TAG" ] && [ "$file_tag" != "$FILTER_TAG" ]; then
+                continue
+            fi
+            
+            echo "  - $name $label"
         done
     else
         echo "No commands saved yet."
@@ -128,21 +243,81 @@ if [[ "$1" == "-run-name" ]]; then
     exit 0
 fi
 
-# Create a new command
-if [ $# -lt 2 ]; then
-    echo "Invalid usage. Type 'makecommand --help' for more info."
-    exit 1
-fi
+# --- CORE LOGIC FOR CREATING COMMANDS ---
 
-CMD="$1"
-NAME="$2"
-SUDO_FLAG="$3"
+MODE="direct"
+FILE_PATH=""
+FOLDER_PATH=""
+CMD=""
+NAME=""
 
-if [[ "$SUDO_FLAG" == "-sudo" ]]; then
-    echo "#SUDO" > "$CONFIG_DIR/$NAME"
-    echo "$CMD" >> "$CONFIG_DIR/$NAME"
-    echo "Success! Saved command: '$NAME' (Requires ROOT)"
+if [[ "$1" == "-file" ]]; then
+    if [ $# -lt 3 ]; then echo "Usage: makecommand -file [path] [name] [options]"; exit 1; fi
+    MODE="file"
+    FILE_PATH="$2"
+    NAME="$3"
+    shift 3
+elif [[ "$1" == "-folder" ]]; then
+    if [ $# -lt 3 ]; then echo "Usage: makecommand -folder [path] [name] -run [cmd]"; exit 1; fi
+    MODE="folder"
+    FOLDER_PATH="$2"
+    NAME="$3"
+    shift 3
 else
-    echo "$CMD" > "$CONFIG_DIR/$NAME"
-    echo "Success! Saved command: '$NAME'"
+    if [ $# -lt 2 ]; then echo "Invalid usage. Type 'makecommand --help' for info."; exit 1; fi
+    MODE="direct"
+    CMD="$1"
+    NAME="$2"
+    shift 2
 fi
+
+# Process extra flags (-sudo, -args, -tag, -type, -run)
+SUDO_FLAG=0
+ARGS_FLAG=0
+TAG_VALUE=""
+TYPE_VALUE=""
+RUN_CMD=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -sudo) SUDO_FLAG=1; shift ;;
+        -args) ARGS_FLAG=1; shift ;;
+        -tag)  TAG_VALUE="$2"; shift 2 ;;
+        -type) TYPE_VALUE="$2"; shift 2 ;;
+        -run)  RUN_CMD="$2"; shift 2 ;;
+        *)     echo "Warning: Unknown flag '$1'"; shift ;;
+    esac
+done
+
+# Build the final command string based on MODE
+if [ "$MODE" == "file" ]; then
+    if [ ! -f "$FILE_PATH" ]; then echo "Error: File '$FILE_PATH' not found."; exit 1; fi
+    CMD=$(cat "$FILE_PATH")
+elif [ "$MODE" == "folder" ]; then
+    if [ -z "$RUN_CMD" ]; then
+        echo "Error: You must provide -run \"command\" when using -folder mode."
+        exit 1
+    fi
+    # Get absolute path to ensure the shortcut always works from anywhere
+    ABS_PATH=$(realpath "$FOLDER_PATH" 2>/dev/null || echo "$PWD/$FOLDER_PATH")
+    DIR=$(dirname "$ABS_PATH")
+    CMD="cd \"$DIR\" && $RUN_CMD"
+fi
+
+# Write to file securely
+> "$CONFIG_DIR/$NAME" # Clear file first
+if [ $SUDO_FLAG -eq 1 ]; then echo "#SUDO" >> "$CONFIG_DIR/$NAME"; fi
+if [ $ARGS_FLAG -eq 1 ]; then echo "#ARGS" >> "$CONFIG_DIR/$NAME"; fi
+if [ -n "$TAG_VALUE" ]; then echo "#TAG:$TAG_VALUE" >> "$CONFIG_DIR/$NAME"; fi
+if [ -n "$TYPE_VALUE" ]; then echo "#TYPE:$TYPE_VALUE" >> "$CONFIG_DIR/$NAME"; fi
+
+echo "$CMD" >> "$CONFIG_DIR/$NAME"
+
+# Print Success Message
+MSG="Success! Saved command: '$NAME'"
+if [ $SUDO_FLAG -eq 1 ]; then MSG="$MSG [ROOT]"; fi
+if [ $ARGS_FLAG -eq 1 ]; then MSG="$MSG [Args]"; fi
+if [ -n "$TAG_VALUE" ]; then MSG="$MSG [Tag: $TAG_VALUE]"; fi
+if [ -n "$TYPE_VALUE" ]; then MSG="$MSG [Type: $TYPE_VALUE]"; fi
+if [ "$MODE" == "folder" ]; then MSG="$MSG [Folder Shortcut]"; fi
+echo -e "\e[32m$MSG\e[0m"
